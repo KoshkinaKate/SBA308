@@ -162,14 +162,11 @@ const CourseInfo = {
 
   const latePenalty = AssignmentGroup.assignments[1].points_possible * 0.1;
   const adjustedScore = LearnerSubmissions[4].submission.score - latePenalty;
-  const second = ((adjustedScore / AssignmentGroup.assignments[1].points_possible).toFixed(3));
+  const second = ((adjustedScore / AssignmentGroup.assignments[1].points_possible).toFixed(2));
 
   const first= (LearnerSubmissions[3].submission.score) / (AssignmentGroup.assignments[0].points_possible);
 
   const avgTwo= (LearnerSubmissions[3].submission.score+ adjustedScore) / (AssignmentGroup.assignments[0].points_possible + AssignmentGroup.assignments[1].points_possible);
-
-
-
 
   console.log("id-" + studentId132, "avg-" + avgTwo, "1-" + first, "2-" + second)
 
@@ -179,7 +176,7 @@ const CourseInfo = {
     try {
   // If an AssignmentGroup does not belong to its course
         if (ag.course_id !== course.id) {
-            throw new Error("AssignmentGroup does not belong to its course");
+            throw new Error("Assignment Group does not belong to this course");
         }
   // Similar data validation should occur elsewhere within the program.
         if (typeof course.name !== "string" && typeof ag.id !== "number"){
@@ -187,28 +184,81 @@ const CourseInfo = {
         } 
 
   // Due Dates
-        const currentDate = new Date();
-        const dueAssignments = ag.assignments.filter(assignment => {
-            const dueDate = new Date(assignment.due_at);
-            if (dueDate <= currentDate) {
-                return true; 
-            } else {
-                return false;
-            }
-        });
-    
+  const currentDate = new Date();
+  const dueAssignments = [];
+  for (let i = 0; i < ag.assignments.length; i++) {
+      const assignment = ag.assignments[i];
+      const dueDate = new Date(assignment.due_at);
+      if (dueDate <= currentDate) {
+          dueAssignments.push(assignment);
+      } else {
+          break;
+      }
+  }
+
   // Total Points Possible for Due Assignments
+//   let totalPointsPossible = 0;
+//   dueAssignments.forEach(assignment => {
+//       totalPointsPossible += assignment.points_possible;
+//   });
   let totalPointsPossible = 0;
-  dueAssignments.forEach(assignment => {
-      totalPointsPossible += assignment.points_possible;
-  });
-//   console.log(totalPointsPossible);
+  for (let i = 0; i < dueAssignments.length; i++) {
+    const assignment = dueAssignments[i];
+    totalPointsPossible += assignment.points_possible;
+}
+if (totalPointsPossible > 100) {
+    // console.log(">100")
+} else if (totalPointsPossible < 50) {
+    // console.log("<50")
+}
+// console.log(totalPointsPossible)
 
 
-// -----
-// const data
-// -----
- 
+  //   Due Assignments
+  const dueAssignment = [];
+  for (let i = 0; i < ag.assignments.length; i++) {
+      const assignment = ag.assignments[i];
+      const dueDate = new Date(assignment.due_at);
+      if (dueDate <= currentDate) {
+          dueAssignment.push(assignment);
+      }
+  }
+
+const learnerData = {};
+
+submissions.forEach(submission => {
+    const assignment = dueAssignments.find(b => b.id === submission.assignment_id);
+    if (!assignment) return;
+
+    const latePenalty = new Date(submission.submission.submitted_at) > new Date(assignment.due_at) ?
+        assignment.points_possible * 0.1 : 0;
+
+    if (!learnerData[submission.learner_id]) {
+        learnerData[submission.learner_id] = {
+            id: submission.learner_id,
+            totalScore: 0,
+            totalPointsPossible: 0,
+            assignmentScores: {}
+        };
+    }
+
+    const learner = learnerData[submission.learner_id];
+    learner.totalScore += submission.submission.score - latePenalty;
+    learner.totalPointsPossible += assignment.points_possible;
+    learner.assignmentScores[submission.assignment_id] = (submission.submission.score - latePenalty) / assignment.points_possible;
+});
+
+// Average
+const result = Object.values(learnerData).map(learner => ({
+    id: learner.id,
+    avg: (learner.totalScore / learner.totalPointsPossible) || 0,
+    ...learner.assignmentScores
+}));
+        return result;
+    } catch (error) {
+        throw error;
+    }
+}
 
 try {
     const result = getLearnerData(CourseInfo, AssignmentGroup, LearnerSubmissions);
